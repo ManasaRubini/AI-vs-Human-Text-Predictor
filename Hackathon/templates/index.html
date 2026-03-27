@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AI vs Human Detector</title>
+    <style>
+    body {
+        font-family: 'Segoe UI', sans-serif;
+        background: linear-gradient(135deg, #1e1e2f, #2b2b45);
+        color: white;
+        text-align: center;
+        margin: 0;
+        padding: 0;
+    }
+
+    h2 {
+        margin-top: 40px;
+        font-size: 28px;
+        letter-spacing: 1px;
+    }
+
+    textarea {
+        width: 60%;
+        height: 140px;
+        margin-top: 20px;
+        padding: 15px;
+        border-radius: 10px;
+        border: none;
+        outline: none;
+        font-size: 16px;
+        resize: none;
+        background: #2f2f4f;
+        color: white;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    }
+
+    textarea::placeholder {
+        color: #aaa;
+    }
+
+    button {
+        margin-top: 20px;
+        padding: 12px 30px;
+        font-size: 16px;
+        border: none;
+        border-radius: 8px;
+        background: linear-gradient(135deg, #6c63ff, #5a54e6);
+        color: white;
+        cursor: pointer;
+        transition: 0.3s ease;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    }
+
+    button:hover {
+        transform: scale(1.05);
+        background: linear-gradient(135deg, #7d75ff, #6a63ff);
+    }
+
+    #result {
+        margin-top: 30px;
+        padding: 20px;
+        width: 60%;
+        margin-left: auto;
+        margin-right: auto;
+        border-radius: 10px;
+        background: #2f2f4f;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        font-size: 18px;
+        line-height: 1.6;
+    }
+
+    b {
+        color: #8ab4ff;
+    }
+
+</style>
+</head>
+<body>
+
+<h2>AI vs Human Text Detector</h2>
+
+<textarea id="text" placeholder="Enter your text..."></textarea><br>
+
+<button onclick="predict()">Predict</button>
+
+<div id="result"></div>
+
+<script src="/static/script.js"></script>
+
+</body>
+</html>
