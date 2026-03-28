@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>AI vs Human Detector</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;600&display=swap" rel="stylesheet">
+<style>
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:'Poppins',sans-serif;
+}
+body{
+    height:100vh;
+    background: url("{{ url_for('static', filename='img.jpeg') }}") no-repeat center center;
+    background-size: cover;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    color: #394a06;
+}
+header{
+    position:absolute;
+    top:30px;
+    text-align:center;
+    width:100%;
+}
+header h1{
+    font-size:2.8rem;
+}
+header p{
+    opacity:.9;
+}
+.card{
+    width:700px;
+    padding:40px;
+    background:rgba(255,255,255,0.15);
+    backdrop-filter:blur(15px);
+    border-radius:20px;
+    border:1px solid rgba(255,255,255,0.3);
+    box-shadow:0 10px 30px rgba(0,0,0,0.5);
+    text-align:center;
+}
+textarea{
+    width:100%;
+    height:260px;
+    padding:20px;
+    font-size:1.1rem;
+    border-radius:15px;
+    border:2px solid rgba(255,255,255,0.6);
+    background:rgba(255,255,255,0.25);
+    backdrop-filter:blur(12px);
+    color: #394a06;
+    outline:none;
+    resize:none;
+}
+
+textarea::placeholder{
+    color: #394a06;
+    opacity:.8;
+}
+
+textarea:focus{
+    border:2px solid #8FD694;
+    box-shadow:0 0 15px rgba(143,214,148,.9);
+}
+
+.counter{
+    margin-top:10px;
+    display:flex;
+    justify-content:space-between;
+    font-size:.9rem;
+}
+
+button{
+    margin-top:20px;
+    padding:14px 30px;
+    border:none;
+    border-radius:12px;
+    font-size:1rem;
+    cursor:pointer;
+    color: #394a06;
+    background:linear-gradient(135deg,#8FD694,#F6C7A1);
+    transition:.3s;
+}
+
+button:hover{
+    transform: scale(1.05);
+    box-shadow: 0 0 25px #e7e6f5;
+}
+
+.modal{
+    display:none;
+    position:fixed;
+    top:0;
+    left:0;
+    width:100%;
+    height:100%;
+    color: #394a06;
+    background:rgba(66, 66, 66, 0.533);
+    justify-content:center;
+    align-items:center;
+}
+
+.modal-content{
+    background:linear-gradient(135deg,#8FD694,#F6C7A1);
+    color: #394a06;
+    padding:30px;
+    border-radius:20px;
+    text-align:center;
+    width:50%;
+
+    box-shadow:0 10px 25px rgba(225, 225, 225, 0.5);
+    animation:popup .4s ease;
+}
+
+@keyframes popup{
+    from{transform:scale(.7);opacity:0;}
+    to{transform:scale(1);opacity:1;}
+}
+
+.modal-content h2{
+    margin-bottom:20px;
+}
+
+.modal-content p{
+    margin:10px 0;
+    font-size:1.1rem;
+}
+
+.close{
+    margin-top:15px;
+    background:white;
+    color: #394a06;
+    padding:8px 18px;
+    border:none;
+    border-radius:10px;
+    cursor:pointer;
+}
+
+</style>
+</head>
+
+<body>
+
+<header>
+   <b> <h1 style ="font-family: Cambria, Cochin, Georgia, Times, 'Times New Roman', serif;font-weight:bolder;font-size:50px" >TEXT AURA</h1></b>
+    <p>Smart AI vs Human Text Identification System</p>
+</header>
+
+<div class="card">
+
+    <textarea id="text" placeholder="Paste or type your text here..."></textarea>
+
+    <div class="counter">
+        <span id="words">Words: 0</span>
+        <span id="chars">Characters: 0</span>
+    </div>
+
+    <button onclick="predict()">Detect Text</button>
+
+</div>
+
+<div class="modal" id="popup">
+    <div class="modal-content">
+        <h2 id="popupResult"></h2>
+        <p id="popupConfidence"></p>
+        <p id="popupDecision"></p>
+        <p id="popupBehavior"></p>
+        <button class="close" onclick="closePopup()">Close</button>
+    </div>
+</div>
+
+<script>
+const textarea = document.getElementById('text');
+const wordsSpan = document.getElementById('words');
+const charsSpan = document.getElementById('chars');
+
+// Live counter
+textarea.addEventListener('input', () => {
+    const text = textarea.value;
+    const words = text.trim().split(/\s+/).filter(Boolean).length;
+    const chars = text.length;
+    wordsSpan.textContent = `Words: ${words}`;
+    charsSpan.textContent = `Characters: ${chars}`;
+});
+
+function predict() {
+    const text = textarea.value.trim();
+    if (!text) {
+        alert("Please enter some text!");
+        return;
+    }
+    const time_taken = 5; 
+
+    fetch('/predict', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ text, time: time_taken })
+    })
+    .then(response => response.json())
+    .then(data => {
+        document.getElementById('popupResult').textContent = `Prediction: ${data.label}`;
+        document.getElementById('popupConfidence').textContent = `Confidence: ${data.confidence}`;
+        document.getElementById('popupDecision').textContent = `Decision: ${data.decision}`;
+        document.getElementById('popupBehavior').textContent = `Behavior: ${data.behavior}`;
+        document.getElementById('popup').style.display = 'flex';
+    })
+    .catch(err => {
+        console.error(err);
+        alert("Error during prediction!");
+    });
+}
+
+function closePopup() {
+    document.getElementById('popup').style.display = 'none';
+}
+</script>
+</body>
+</html>
