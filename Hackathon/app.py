@@ -71,15 +71,23 @@ def predict_text(text):
 # =============================
 
 # Redirect root → HTML page
-@app.route("/")
-def home():
-    return redirect(url_for("ui"))
+from flask import Flask, render_template, redirect, url_for
+app = Flask(__name__)
 
-# Actual HTML page
+# Root → redirect to landing page
+@app.route("/")
+def root():
+    return redirect(url_for("index"))
+
+# Landing page (index.html)
 @app.route("/ui")
-def ui():
+def index():
     return render_template("index.html")
 
+# Home page (home.html)
+@app.route("/home")
+def home_page():
+    return render_template("home.html")
 # Prediction API
 @app.route("/predict", methods=["POST"])
 def predict():
@@ -107,10 +115,17 @@ def predict():
         behavior = "Slow Typing (Human-like)"
     else:
         behavior = "Normal Typing (Human-like)"
+    if confidence >= 0.8:
+        decision = "Acceptable (High certainty)"
+    elif 0.6 <= confidence < 0.8:
+        decision = "Needs Review (Moderate certainty)"
+    else:
+        decision = "Likely AI-generated / Uncertain"
+
     return jsonify({
     "label": str(result),
     "confidence": float(round(float(confidence), 2)),
-    "decision": "AI" if result == "AI Generated" else "Human",
+    "decision": decision, 
     "behavior": str(behavior)
 })
 
