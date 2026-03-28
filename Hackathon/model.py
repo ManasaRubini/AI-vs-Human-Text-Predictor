@@ -1,114 +1,176 @@
-# -----------------------------
-# Import Libraries
-# -----------------------------
+# =============================
+# AI vs Human Text Detector
+# FINAL FIXED VERSION (Fast + Accurate)
+# =============================
+
+import numpy as np
 import pandas as pd
-import string
-from sklearn.model_selection import train_test_split
+import pickle
+import torch
+
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import accuracy_score, classification_report
-# -----------------------------
-# Load Dataset
-# -----------------------------
-df = pd.read_csv("complete_dataset.csv")  # columns: text, label
-# -----------------------------
-# Preprocessing Function
-# -----------------------------
-def preprocess(text):
-    text = str(text).lower()  # lowercase
-    text = text.translate(str.maketrans('', '', string.punctuation))  # remove punctuation
-    return text
-df["text"] = df["text"].apply(preprocess)
-# -----------------------------
-# TF-IDF Vectorization
-# -----------------------------
-vectorizer = TfidfVectorizer(stop_words='english')
-X = vectorizer.fit_transform(df["text"])
-
-y = df["label"]
-
-# -----------------------------
-# Train-Test Split
-# -----------------------------
-X_train, X_test, y_train, y_test = train_test_split(
-    X, y, test_size=0.2, random_state=42
-)
-
-# -----------------------------
-# Model 1: Logistic Regression
-# -----------------------------
-lr_model = LogisticRegression(max_iter=1000)
-lr_model.fit(X_train, y_train)
-lr_pred = lr_model.predict(X_test)
-
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.model_selection import train_test_split
 
 from xgboost import XGBClassifier
-# -----------------------------
-# Model 2: XGBoost
-# -----------------------------
-xgb_model = XGBClassifier(
-    use_label_encoder=False,
-    eval_metric='logloss',
-    n_estimators=100,
-    max_depth=6,
-    learning_rate=0.1
+
+# =============================
+# Load Dataset
+# =============================
+df = pd.read_csv("complete_dataset.csv")
+df = df.dropna()
+
+texts = df['text']
+labels = df['label'].astype(int)
+
+# =============================
+# TF-IDF Features
+# =============================
+vectorizer = TfidfVectorizer(max_features=5000)
+X_tfidf = vectorizer.fit_transform(texts)
+
+# =============================
+# Base Model (Logistic Regression)
+# =============================
+log_model = LogisticRegression(max_iter=1000)
+log_model.fit(X_tfidf, labels)
+
+
+# =============================
+# Feature Functions
+# =============================
+import math
+from collections import Counter
+
+def burstiness(text):
+    sentences = text.split('.')
+    lengths = [len(s.split()) for s in sentences if len(s.strip()) > 0]
+    return np.std(lengths) if lengths else 0
+
+
+def repetition_score(text):
+    words = text.lower().split()
+    return len(words) / len(set(words)) if len(words) > 0 else 0
+
+
+def word_entropy(text):
+    words = text.lower().split()
+    
+    if len(words) == 0:
+        return 0
+
+    counts = Counter(words)
+    total = len(words)
+
+    entropy = 0
+    for word in counts:
+        p = counts[word] / total
+        entropy -= p * math.log2(p)
+
+    return entropy
+# =============================
+# Extract Features
+# =============================
+
+def extract_features(text):
+    tfidf_vec = vectorizer.transform([text])
+
+    log_prob = log_model.predict_proba(tfidf_vec)[0][1]
+
+    burst = burstiness(text)
+    repeat = repetition_score(text)
+    entropy = word_entropy(text)
+
+    return [log_prob, burst, repeat, entropy]
+
+# =============================
+# Prepare Meta Features
+# =============================
+X_features = []
+
+for i, text in enumerate(texts):
+    if i % 100 == 0:
+        print(f"Processing: {i}/{len(texts)}")
+
+    X_features.append(extract_features(text))
+
+X_features = np.array(X_features)
+
+# Normalize
+scaler = MinMaxScaler()
+X_features = scaler.fit_transform(X_features)
+
+# =============================
+# Train-Test Split
+# =============================
+X_train, X_test, y_train, y_test = train_test_split(
+    X_features, labels, test_size=0.2, random_state=42
 )
 
-xgb_model.fit(X_train, y_train)
-xgb_pred = xgb_model.predict(X_test)
-# -----------------------------
+# =============================
+# XGBoost Meta Model
+# =============================
+meta_model = XGBClassifier(
+    n_estimators=100,
+    max_depth=5,
+    learning_rate=0.1,
+    use_label_encoder=False,
+    eval_metric='logloss'
+)
+
+meta_model.fit(X_train, y_train)
+
+# =============================
 # Evaluation
-# -----------------------------
-print("Logistic Regression Accuracy:", accuracy_score(y_test, lr_pred))
+# =============================
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 
+y_pred = meta_model.predict(X_test)
 
-print("\n--- Logistic Regression Report ---")
-print(classification_report(y_test, lr_pred))
+accuracy = accuracy_score(y_test, y_pred)
+print(f"\n✅ Overall Accuracy: {accuracy:.4f}")
 
-print("XGBoost Accuracy:", accuracy_score(y_test, xgb_pred))
+print("\n📊 Classification Report:")
+print(classification_report(y_test, y_pred))
 
-print("\n--- XGBoost Report ---")
-print(classification_report(y_test, xgb_pred))
+print("\n🧾 Confusion Matrix:")
+print(confusion_matrix(y_test, y_pred))
+# =============================
+# Save Models
+# =============================
+pickle.dump(vectorizer, open("vectorizer.pkl", "wb"))
+pickle.dump(log_model, open("log_model.pkl", "wb"))
+pickle.dump(meta_model, open("meta_model.pkl", "wb"))
+pickle.dump(scaler, open("scaler.pkl", "wb"))
 
-# -----------------------------
-# User Input Prediction
-# -----------------------------
-while True:
-    user_text = input("\nEnter text (or type 'exit' to quit): ")
+print("✅ Models Saved Successfully")
 
-    if user_text.lower() == "exit":
-        break
+# =============================
+# Prediction Function
+# =============================
 
-    # Preprocess
-    processed_text = preprocess(user_text)
+def predict_text(text):
+    feats = extract_features(text)
+    feats = scaler.transform([feats])
 
-    # Transform using SAME vectorizer
-    vectorized_text = vectorizer.transform([processed_text])
+    pred = meta_model.predict(feats)[0]
+    prob = meta_model.predict_proba(feats)[0][1]
 
-    # -----------------------------
-    # Logistic Regression Prediction
-    # -----------------------------
-    lr_prediction = lr_model.predict(vectorized_text)[0]
-    lr_probs = lr_model.predict_proba(vectorized_text)[0]
+    if pred == 1:
+        return f"AI Generated (Confidence: {prob:.2f})"
+    else:
+        return f"Human Written (Confidence: {1 - prob:.2f})"
 
-    # Get confidence (max probability)
-    lr_confidence = max(lr_probs)
+# =============================
+# Input
+# =============================
+if __name__ == "__main__":
+    while True:
+        user_input = input("\nEnter text (or type 'exit' to quit):\n")
 
-    print("\n[Logistic Regression]")
-    print("Prediction:", lr_prediction)
-    print("Confidence:", round(lr_confidence * 100, 2), "%")
+        if user_input.lower() == 'exit':
+            break
 
-    # -----------------------------
-    # XGBoost Prediction
-    # -----------------------------
-    xgb_prediction = xgb_model.predict(vectorized_text)[0]
-    xgb_probs = xgb_model.predict_proba(vectorized_text)[0]
-
-    xgb_confidence = max(xgb_probs)
-
-    print("\n[XGBoost]")
-    print("Prediction:", xgb_prediction)
-    print("Confidence:", round(xgb_confidence * 100, 2), "%")
-
-# 0 - Human
-# 1 - AI
+        result = predict_text(user_input)
+        print("\nResult:", result)
