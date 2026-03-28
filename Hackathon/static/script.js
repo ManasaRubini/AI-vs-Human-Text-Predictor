@@ -24,10 +24,14 @@ function predict() {
     })
     .then(res => res.json())
     .then(data => {
-        document.getElementById("result").innerHTML =
-            `<b>Prediction:</b> ${data.label}<br>
-             <b>Confidence:</b> ${data.confidence}<br>
-             <b>Decision:</b> ${data.decision}<br>
-             <b>Behavior:</b> ${data.behavior}`;
-    });
+    const resultDiv = document.getElementById("result");
+    resultDiv.className = ""; // reset classes
+    resultDiv.classList.add(data.label.toLowerCase().includes("ai") ? "ai" : "human");
+
+    resultDiv.innerHTML =
+        `<b>Prediction:</b> ${data.label}<br>
+         <b>Confidence:</b> ${data.confidence}<br>
+         <b>Decision:</b> ${data.decision}<br>
+         <b>Behavior:</b> ${data.behavior}`;
+});
 }
